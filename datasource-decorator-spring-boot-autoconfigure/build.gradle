@@ -1,12 +1,16 @@
-dependencies {
-    compile("org.springframework:spring-jdbc:4.3.6.RELEASE")
-    compile("org.springframework.boot:spring-boot:1.4.2.RELEASE")
-    compile("org.springframework.boot:spring-boot-autoconfigure:1.4.2.RELEASE")
+repositories {
+    maven { url "https://repo.spring.io/milestone" }
+}
 
-    compileOnly("org.springframework.boot:spring-boot-configuration-processor:1.4.2.RELEASE")
+dependencies {
+    compile("org.springframework.boot:spring-boot:2.0.0.M3")
+    compile("org.springframework.boot:spring-boot-autoconfigure:2.0.0.M3")
+    compile("org.springframework.boot:spring-boot-starter-jdbc:2.0.0.M3")
+
+    compileOnly("org.springframework.boot:spring-boot-configuration-processor:2.0.0.M3")
     compileOnly("org.projectlombok:lombok:1.16.10")
 
-    compileOnly("org.springframework.boot:spring-boot-actuator:1.4.2.RELEASE")
+    compileOnly("org.springframework.boot:spring-boot-actuator:2.0.0.M3")
 
     compileOnly("org.apache.commons:commons-dbcp2:2.1.1")
     compileOnly("org.apache.tomcat:tomcat-jdbc:8.5.13")
@@ -24,7 +28,7 @@ dependencies {
     testCompile("junit:junit:4.12")
     testCompile("com.h2database:h2:1.4.193")
     testCompile("org.assertj:assertj-core:3.6.2")
-    testCompile("org.springframework.boot:spring-boot-starter-test:1.4.2.RELEASE")
+    testCompile("org.springframework.boot:spring-boot-starter-test:2.0.0.M3")
 
     testCompile("p6spy:p6spy:3.0.0")
     testCompile("net.ttddyy:datasource-proxy:1.4.2")
@@ -39,4 +43,10 @@ dependencies {
     testCompile("org.apache.commons:commons-dbcp2:2.1.1")
     testCompile("org.apache.tomcat:tomcat-jdbc:8.5.13")
     testCompile("com.zaxxer:HikariCP:2.5.1")
+}
+
+test {
+    testLogging {
+        exceptionFormat = 'full'
+    }
 }
