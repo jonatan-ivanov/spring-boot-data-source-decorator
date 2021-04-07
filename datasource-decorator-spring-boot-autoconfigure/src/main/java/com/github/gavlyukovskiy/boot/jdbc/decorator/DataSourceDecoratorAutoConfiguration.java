@@ -18,7 +18,6 @@ package com.github.gavlyukovskiy.boot.jdbc.decorator;
 
 import com.github.gavlyukovskiy.boot.jdbc.decorator.dsproxy.DataSourceProxyConfiguration;
 import com.github.gavlyukovskiy.boot.jdbc.decorator.flexypool.FlexyPoolConfiguration;
-import com.github.gavlyukovskiy.boot.jdbc.decorator.metadata.DecoratedDataSourcePoolMetadataProvider;
 import com.github.gavlyukovskiy.boot.jdbc.decorator.p6spy.P6SpyConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -26,7 +25,6 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.metadata.DataSourcePoolMetadataProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,11 +66,6 @@ public class DataSourceDecoratorAutoConfiguration {
     @ConditionalOnBean(DataSourceDecorator.class)
     public static DataSourceDecoratorBeanPostProcessor dataSourceDecoratorBeanPostProcessor() {
         return new DataSourceDecoratorBeanPostProcessor();
-    }
-
-    @Bean
-    public DataSourcePoolMetadataProvider proxyDataSourcePoolMetadataProvider() {
-        return new DecoratedDataSourcePoolMetadataProvider();
     }
 
     @Bean
