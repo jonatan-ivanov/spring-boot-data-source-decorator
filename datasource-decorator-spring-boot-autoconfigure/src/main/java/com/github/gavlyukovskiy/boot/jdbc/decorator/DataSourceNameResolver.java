@@ -16,16 +16,8 @@
 
 package com.github.gavlyukovskiy.boot.jdbc.decorator;
 
-import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.context.ApplicationContext;
-import org.springframework.util.ClassUtils;
-
 import javax.sql.CommonDataSource;
-import javax.sql.DataSource;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * {@link CommonDataSource} name resolver based on bean name.
@@ -34,50 +26,13 @@ import java.util.Map.Entry;
  * @since 1.3.0
  */
 public class DataSourceNameResolver {
-    private final static boolean HIKARI_AVAILABLE =
-            ClassUtils.isPresent("com.zaxxer.hikari.HikariDataSource", DataSourceNameResolver.class.getClassLoader());
+    private final ConcurrentHashMap<CommonDataSource, String> cachedNames = new ConcurrentHashMap<>();
 
-    private final ApplicationContext applicationContext;
-    private final Map<CommonDataSource, String> cachedNames = new HashMap<>();
-
-    public DataSourceNameResolver(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
+    public void addDataSource(String name, CommonDataSource dataSource) {
+        cachedNames.putIfAbsent(dataSource, name);
     }
 
     public String resolveDataSourceName(CommonDataSource dataSource) {
-        String dataSourceName = cachedNames.get(dataSource);
-        if (dataSourceName == null) {
-            // even if two threads compute this in parallel result will be the same
-            synchronized (cachedNames) {
-                if (HIKARI_AVAILABLE && dataSource instanceof HikariDataSource) {
-                    HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
-                    if (hikariDataSource.getPoolName() != null && !hikariDataSource.getPoolName().startsWith("HikariPool-")) {
-                        return hikariDataSource.getPoolName();
-                    }
-                }
-                Map<String, DataSource> dataSources = applicationContext.getBeansOfType(DataSource.class);
-                dataSourceName = dataSources.entrySet()
-                        .stream()
-                        .filter(entry -> {
-                            DataSource candidate = entry.getValue();
-                            if (candidate instanceof DecoratedDataSource) {
-                                return matchesDataSource((DecoratedDataSource) candidate, dataSource);
-                            }
-                            return candidate == dataSource;
-                        })
-                        .findFirst()
-                        .map(Entry::getKey)
-                        .orElse("dataSource");
-                cachedNames.put(dataSource, dataSourceName);
-            }
-        }
-        return dataSourceName;
-    }
-
-    private boolean matchesDataSource(DecoratedDataSource decoratedCandidate, CommonDataSource dataSource) {
-        return decoratedCandidate.getRealDataSource() == dataSource
-                || decoratedCandidate.getDecoratingChain().stream()
-                .map(DataSourceDecorationStage::getDataSource)
-                .anyMatch(candidate -> candidate == dataSource);
+        return cachedNames.getOrDefault(dataSource, "dataSource");
     }
 }

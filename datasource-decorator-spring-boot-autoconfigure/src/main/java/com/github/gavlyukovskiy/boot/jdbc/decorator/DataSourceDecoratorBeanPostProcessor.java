@@ -26,9 +26,7 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 
 import javax.sql.DataSource;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -43,6 +41,7 @@ import java.util.stream.Collectors;
 public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, Ordered, ApplicationContextAware {
     private ApplicationContext applicationContext;
     private DataSourceDecoratorProperties dataSourceDecoratorProperties;
+    private DataSourceNameResolver dataSourceNameResolver;
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -64,23 +63,21 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
     }
 
     private DataSource decorate(DataSource dataSource, String name, Map<String, DataSourceDecorator> decorators) {
-        List<DataSourceDecorationStage> decoratedDataSourceChainEntries = new ArrayList<>();
-
+        getDataSourceNameResolver().addDataSource(name, dataSource);
         DataSource decoratedDataSource = dataSource;
         for (Entry<String, DataSourceDecorator> decoratorEntry : decorators.entrySet()) {
             String decoratorBeanName = decoratorEntry.getKey();
             DataSourceDecorator decorator = decoratorEntry.getValue();
 
             DataSource dataSourceBeforeDecorating = decoratedDataSource;
-            decoratedDataSource = Objects.requireNonNull(decorator.decorate(name, decoratedDataSource),
-                    "DataSourceDecorator (" + decoratorBeanName + ", " + decorator + ") should not return null");
+            decoratedDataSource = Objects.requireNonNull(decorator.decorate(name, decoratedDataSource), "DataSourceDecorator (" + decoratorBeanName + ", " + decorator + ") should not return null");
 
             if (dataSourceBeforeDecorating != decoratedDataSource) {
-                decoratedDataSourceChainEntries.add(0, new DataSourceDecorationStage(decoratorBeanName, decorator, decoratedDataSource));
+                getDataSourceNameResolver().addDataSource(name, decoratedDataSource);
             }
         }
 
-        return (dataSource != decoratedDataSource) ? new DecoratedDataSource(name, dataSource, decoratedDataSource, decoratedDataSourceChainEntries) : dataSource;
+        return decoratedDataSource;
     }
 
     private DataSourceDecoratorProperties getDataSourceDecoratorProperties() {
@@ -89,6 +86,14 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
         }
 
         return dataSourceDecoratorProperties;
+    }
+
+    private DataSourceNameResolver getDataSourceNameResolver() {
+        if (this.dataSourceNameResolver == null) {
+            this.dataSourceNameResolver = applicationContext.getBean(DataSourceNameResolver.class);
+        }
+
+        return this.dataSourceNameResolver;
     }
 
     @Override
