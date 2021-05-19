@@ -23,6 +23,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.util.ClassUtils;
 
 import javax.sql.DataSource;
 
@@ -32,6 +33,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 /**
  * {@link BeanPostProcessor} that wraps all data source beans in {@link DataSource}
  * proxies specified in property 'spring.datasource.type'.
@@ -39,6 +42,8 @@ import java.util.stream.Collectors;
  * @author Arthur Gavlyukovskiy
  */
 public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, Ordered, ApplicationContextAware {
+    private final static boolean HIKARI_AVAILABLE = ClassUtils.isPresent("com.zaxxer.hikari.HikariDataSource", DataSourceNameResolver.class.getClassLoader());
+
     private ApplicationContext applicationContext;
     private DataSourceDecoratorProperties dataSourceDecoratorProperties;
     private DataSourceNameResolver dataSourceNameResolver;
@@ -55,11 +60,22 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
                     .sorted(Entry.comparingByValue(AnnotationAwareOrderComparator.INSTANCE))
                     .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (v1, v2) -> v2, LinkedHashMap::new));
 
-            return decorate((DataSource) bean, beanName, decorators);
+            return decorate((DataSource) bean, getDataSourceName(bean, beanName), decorators);
         }
         else {
             return bean;
         }
+    }
+
+    private String getDataSourceName(Object bean, String beanName) {
+        if (HIKARI_AVAILABLE && bean instanceof HikariDataSource) {
+            HikariDataSource hikariDataSource = (HikariDataSource) bean;
+            if (hikariDataSource.getPoolName() != null && !hikariDataSource.getPoolName().startsWith("HikariPool-")) {
+                return hikariDataSource.getPoolName();
+            }
+        }
+
+        return beanName;
     }
 
     private DataSource decorate(DataSource dataSource, String name, Map<String, DataSourceDecorator> decorators) {
@@ -75,6 +91,11 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
             if (dataSourceBeforeDecorating != decoratedDataSource) {
                 getDataSourceNameResolver().addDataSource(name, decoratedDataSource);
             }
+        }
+
+        if (dataSource != decoratedDataSource) {
+            decoratedDataSource = new DecoratedDataSource(dataSource, decoratedDataSource);
+            getDataSourceNameResolver().addDataSource(name, decoratedDataSource);
         }
 
         return decoratedDataSource;

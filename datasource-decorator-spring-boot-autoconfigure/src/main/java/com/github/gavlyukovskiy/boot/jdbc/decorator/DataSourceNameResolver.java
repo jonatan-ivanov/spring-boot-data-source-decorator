@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataSourceNameResolver {
     private final ConcurrentHashMap<CommonDataSource, String> cachedNames = new ConcurrentHashMap<>();
 
-    public void addDataSource(String name, CommonDataSource dataSource) {
+    void addDataSource(String name, CommonDataSource dataSource) {
         cachedNames.putIfAbsent(dataSource, name);
     }
 
