@@ -21,8 +21,6 @@ import com.vladmihalcea.flexypool.FlexyPoolDataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import net.ttddyy.dsproxy.support.ProxyDataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
-import org.assertj.core.api.AbstractListAssert;
-import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -35,11 +33,11 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
@@ -60,8 +58,23 @@ class DataSourceDecoratorAutoConfigurationTests {
     void testDecoratingInDefaultOrder() {
         contextRunner.run(context -> {
             DataSource dataSource = context.getBean(DataSource.class);
+            assertThat(dataSource).isInstanceOf(DecoratedDataSource.class);
 
-            assertThatDataSourceDecoratingChain(dataSource).containsExactly(P6DataSource.class, ProxyDataSource.class, FlexyPoolDataSource.class);
+            DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
+            assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(P6DataSource.class);
+            P6DataSource p6DataSource = (P6DataSource) decoratedDataSource.getDecoratedDataSource();
+
+            DataSource p6WrappedDataSource = (DataSource) ReflectionTestUtils.getField(p6DataSource, "realDataSource");
+            assertThat(p6WrappedDataSource).isInstanceOf(ProxyDataSource.class);
+            ProxyDataSource proxyDataSource = (ProxyDataSource) p6WrappedDataSource;
+
+            DataSource dsProxyWrappedDataSource = (DataSource) ReflectionTestUtils.getField(proxyDataSource, "dataSource");
+            assertThat(dsProxyWrappedDataSource).isInstanceOf(FlexyPoolDataSource.class);
+            FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dsProxyWrappedDataSource;
+
+            DataSource flexyPoolWrappedDataSource = (DataSource) ReflectionTestUtils.getField(flexyPoolDataSource, "targetDataSource");
+            assertThat(flexyPoolWrappedDataSource).isInstanceOf(HikariDataSource.class);
+            assertThat(flexyPoolWrappedDataSource).isEqualTo(decoratedDataSource.getOriginalDataSource());
         });
     }
 
@@ -83,8 +96,18 @@ class DataSourceDecoratorAutoConfigurationTests {
         contextRunner.run(context -> {
             DataSource dataSource = context.getBean(DataSource.class);
 
-            assertThat(((DecoratedDataSource) dataSource).getRealDataSource()).isInstanceOf(HikariDataSource.class);
-            assertThatDataSourceDecoratingChain(dataSource).containsExactly(P6DataSource.class, ProxyDataSource.class);
+            assertThat(((DecoratedDataSource) dataSource).getOriginalDataSource()).isInstanceOf(HikariDataSource.class);
+
+            DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
+            assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(P6DataSource.class);
+            P6DataSource p6DataSource = (P6DataSource) decoratedDataSource.getDecoratedDataSource();
+
+            DataSource p6WrappedDataSource = (DataSource) ReflectionTestUtils.getField(p6DataSource, "realDataSource");
+            assertThat(p6WrappedDataSource).isInstanceOf(ProxyDataSource.class);
+            ProxyDataSource proxyDataSource = (ProxyDataSource) p6WrappedDataSource;
+
+            DataSource dsProxyWrappedDataSource = (DataSource) ReflectionTestUtils.getField(proxyDataSource, "dataSource");
+            assertThat(dsProxyWrappedDataSource).isEqualTo(decoratedDataSource.getOriginalDataSource());
         });
     }
 
@@ -99,7 +122,7 @@ class DataSourceDecoratorAutoConfigurationTests {
             DataSource dataSource = context.getBean(DataSource.class);
             assertThat(dataSource).isNotNull();
             assertThat(dataSource).isInstanceOf(DecoratedDataSource.class);
-            DataSource realDataSource = ((DecoratedDataSource) dataSource).getRealDataSource();
+            DataSource realDataSource = ((DecoratedDataSource) dataSource).getOriginalDataSource();
             assertThat(realDataSource).isInstanceOf(HikariDataSource.class);
             assertThat(((HikariDataSource) realDataSource).getCatalog()).isEqualTo("test_catalog");
         });
@@ -112,7 +135,7 @@ class DataSourceDecoratorAutoConfigurationTests {
         contextRunner.run(context -> {
             DataSource dataSource = context.getBean(DataSource.class);
             assertThat(dataSource).isInstanceOf(DecoratedDataSource.class);
-            DataSource realDataSource = ((DecoratedDataSource) dataSource).getRealDataSource();
+            DataSource realDataSource = ((DecoratedDataSource) dataSource).getOriginalDataSource();
             assertThat(realDataSource).isInstanceOf(BasicDataSource.class);
         });
     }
@@ -139,11 +162,30 @@ class DataSourceDecoratorAutoConfigurationTests {
             DataSource customDataSource = ((DecoratedDataSource) dataSource).getDecoratedDataSource();
             assertThat(customDataSource).isInstanceOf(CustomDataSourceProxy.class);
 
-            DataSource realDataSource = ((DecoratedDataSource) dataSource).getRealDataSource();
+            DataSource realDataSource = ((DecoratedDataSource) dataSource).getOriginalDataSource();
             assertThat(realDataSource).isInstanceOf(HikariDataSource.class);
 
-            assertThatDataSourceDecoratingChain(dataSource).containsExactly(CustomDataSourceProxy.class, P6DataSource.class, ProxyDataSource.class,
-                    FlexyPoolDataSource.class);
+            assertThat(dataSource).isInstanceOf(DecoratedDataSource.class);
+
+            DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
+
+            assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(CustomDataSourceProxy.class);
+            CustomDataSourceProxy customDataSourceProxy = (CustomDataSourceProxy) decoratedDataSource.getDecoratedDataSource();
+
+            assertThat(customDataSourceProxy.delegate).isInstanceOf(P6DataSource.class);
+            P6DataSource p6DataSource = (P6DataSource) customDataSourceProxy.delegate;
+
+            DataSource p6WrappedDataSource = (DataSource) ReflectionTestUtils.getField(p6DataSource, "realDataSource");
+            assertThat(p6WrappedDataSource).isInstanceOf(ProxyDataSource.class);
+            ProxyDataSource proxyDataSource = (ProxyDataSource) p6WrappedDataSource;
+
+            DataSource dsProxyWrappedDataSource = (DataSource) ReflectionTestUtils.getField(proxyDataSource, "dataSource");
+            assertThat(dsProxyWrappedDataSource).isInstanceOf(FlexyPoolDataSource.class);
+            FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dsProxyWrappedDataSource;
+
+            DataSource flexyPoolWrappedDataSource = (DataSource) ReflectionTestUtils.getField(flexyPoolDataSource, "targetDataSource");
+            assertThat(flexyPoolWrappedDataSource).isInstanceOf(HikariDataSource.class);
+            assertThat(flexyPoolWrappedDataSource).isEqualTo(decoratedDataSource.getOriginalDataSource());
         });
     }
 
@@ -197,14 +239,6 @@ class DataSourceDecoratorAutoConfigurationTests {
                     .getPropertyValue("targetDataSource");
             assertThat(realDataSource).isNotNull();
             assertThat(realDataSource).isInstanceOf(HikariDataSource.class);
-
-            assertThatDataSourceDecoratingChain(dataSource).containsExactly(P6DataSource.class, ProxyDataSource.class, FlexyPoolDataSource.class);
-
-            assertThat(dataSource.toString()).isEqualTo(
-                    "p6SpyDataSourceDecorator [com.p6spy.engine.spy.P6DataSource] -> " +
-                            "proxyDataSourceDecorator [net.ttddyy.dsproxy.support.ProxyDataSource] -> " +
-                            "flexyPoolDataSourceDecorator [com.vladmihalcea.flexypool.FlexyPoolDataSource] -> " +
-                            "dataSource [com.zaxxer.hikari.HikariDataSource]");
         });
     }
 
@@ -225,10 +259,6 @@ class DataSourceDecoratorAutoConfigurationTests {
             assertThat(dataSource2).isNotNull();
             assertThat(dataSource2).isInstanceOf(DecoratedDataSource.class);
         });
-    }
-
-    private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>> assertThatDataSourceDecoratingChain(DataSource dataSource) {
-        return assertThat(((DecoratedDataSource) dataSource).getDecoratingChain()).extracting("dataSource").extracting("class");
     }
 
     @Configuration

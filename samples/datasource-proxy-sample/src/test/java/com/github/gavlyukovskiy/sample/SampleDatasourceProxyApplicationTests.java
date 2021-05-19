@@ -17,8 +17,8 @@
 package com.github.gavlyukovskiy.sample;
 
 import com.github.gavlyukovskiy.boot.jdbc.decorator.DecoratedDataSource;
-import com.github.gavlyukovskiy.boot.jdbc.decorator.dsproxy.ProxyDataSourceDecorator;
 import com.zaxxer.hikari.HikariDataSource;
+import net.ttddyy.dsproxy.support.ProxyDataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +42,7 @@ class SampleDatasourceProxyApplicationTests {
 
         DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
 
-        assertThat(decoratedDataSource.getDecoratingChain().get(0).getDataSourceDecorator()).isInstanceOf(ProxyDataSourceDecorator.class);
+        assertThat(decoratedDataSource.getOriginalDataSource()).isInstanceOf(HikariDataSource.class);
+        assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(ProxyDataSource.class);
     }
 }

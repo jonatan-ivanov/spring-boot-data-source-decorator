@@ -17,7 +17,7 @@
 package com.github.gavlyukovskiy.sample;
 
 import com.github.gavlyukovskiy.boot.jdbc.decorator.DecoratedDataSource;
-import com.github.gavlyukovskiy.boot.jdbc.decorator.flexypool.FlexyPoolDataSourceDecorator;
+import com.vladmihalcea.flexypool.FlexyPoolDataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +42,7 @@ class SampleFlexyPoolApplicationTests {
 
         DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
 
-        assertThat(decoratedDataSource.getDecoratingChain().get(0).getDataSourceDecorator()).isInstanceOf(FlexyPoolDataSourceDecorator.class);
+        assertThat(decoratedDataSource.getOriginalDataSource()).isInstanceOf(HikariDataSource.class);
+        assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(FlexyPoolDataSource.class);
     }
 }

@@ -17,7 +17,7 @@
 package com.github.gavlyukovskiy.sample;
 
 import com.github.gavlyukovskiy.boot.jdbc.decorator.DecoratedDataSource;
-import com.github.gavlyukovskiy.boot.jdbc.decorator.p6spy.P6SpyDataSourceDecorator;
+import com.p6spy.engine.spy.P6DataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +42,7 @@ class SampleP6SpyApplicationTests {
 
         DecoratedDataSource decoratedDataSource = (DecoratedDataSource) dataSource;
 
-        assertThat(decoratedDataSource.getDecoratingChain().get(0).getDataSourceDecorator()).isInstanceOf(P6SpyDataSourceDecorator.class);
+        assertThat(decoratedDataSource.getOriginalDataSource()).isInstanceOf(HikariDataSource.class);
+        assertThat(decoratedDataSource.getDecoratedDataSource()).isInstanceOf(P6DataSource.class);
     }
 }

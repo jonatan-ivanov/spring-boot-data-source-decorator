@@ -9,8 +9,7 @@ repositories {
 apply(plugin = "io.spring.dependency-management")
 
 dependencies {
-    // get latest version from https://github.com/gavlyukovskiy/spring-boot-data-source-decorator/releases
-    implementation("com.github.gavlyukovskiy:flexy-pool-spring-boot-starter:${project.version}")
+    implementation(project(":flexy-pool-spring-boot-starter"))
 
     implementation("org.springframework.boot:spring-boot")
     implementation("org.springframework.boot:spring-boot-starter")
