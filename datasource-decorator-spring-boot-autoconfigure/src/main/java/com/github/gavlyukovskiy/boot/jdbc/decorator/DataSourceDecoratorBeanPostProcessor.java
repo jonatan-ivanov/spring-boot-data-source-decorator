@@ -27,6 +27,7 @@ import org.springframework.util.ClassUtils;
 
 import javax.sql.DataSource;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,8 +46,12 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
     private final static boolean HIKARI_AVAILABLE = ClassUtils.isPresent("com.zaxxer.hikari.HikariDataSource", DataSourceNameResolver.class.getClassLoader());
 
     private ApplicationContext applicationContext;
-    private DataSourceDecoratorProperties dataSourceDecoratorProperties;
     private DataSourceNameResolver dataSourceNameResolver;
+    private Collection<String> excludedBeans;
+
+    public DataSourceDecoratorBeanPostProcessor(Collection<String> excludedBeans) {
+        this.excludedBeans = excludedBeans;
+    }
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
@@ -55,7 +60,7 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        if (bean instanceof DataSource && !ScopedProxyUtils.isScopedTarget(beanName) && !getDataSourceDecoratorProperties().getExcludeBeans().contains(beanName)) {
+        if (bean instanceof DataSource && !ScopedProxyUtils.isScopedTarget(beanName) && !excludedBeans.contains(beanName)) {
             Map<String, DataSourceDecorator> decorators = applicationContext.getBeansOfType(DataSourceDecorator.class).entrySet().stream()
                     .sorted(Entry.comparingByValue(AnnotationAwareOrderComparator.INSTANCE))
                     .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (v1, v2) -> v2, LinkedHashMap::new));
@@ -99,14 +104,6 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
         }
 
         return decoratedDataSource;
-    }
-
-    private DataSourceDecoratorProperties getDataSourceDecoratorProperties() {
-        if (dataSourceDecoratorProperties == null) {
-            dataSourceDecoratorProperties = applicationContext.getBean(DataSourceDecoratorProperties.class);
-        }
-
-        return dataSourceDecoratorProperties;
     }
 
     private DataSourceNameResolver getDataSourceNameResolver() {

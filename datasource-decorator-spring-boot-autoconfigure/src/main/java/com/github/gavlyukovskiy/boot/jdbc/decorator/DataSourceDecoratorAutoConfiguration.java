@@ -51,8 +51,8 @@ public class DataSourceDecoratorAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(DataSourceDecorator.class)
-    public static DataSourceDecoratorBeanPostProcessor dataSourceDecoratorBeanPostProcessor() {
-        return new DataSourceDecoratorBeanPostProcessor();
+    public static DataSourceDecoratorBeanPostProcessor dataSourceDecoratorBeanPostProcessor(DataSourceDecoratorProperties dataSourceDecoratorProperties) {
+        return new DataSourceDecoratorBeanPostProcessor(dataSourceDecoratorProperties.getExcludeBeans());
     }
 
     @Bean
