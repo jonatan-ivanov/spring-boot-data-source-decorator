@@ -23,7 +23,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
-import org.springframework.util.ClassUtils;
 
 import javax.sql.DataSource;
 
@@ -34,8 +33,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.zaxxer.hikari.HikariDataSource;
-
 /**
  * {@link BeanPostProcessor} that wraps all data source beans in {@link DataSource}
  * proxies specified in property 'spring.datasource.type'.
@@ -43,11 +40,9 @@ import com.zaxxer.hikari.HikariDataSource;
  * @author Arthur Gavlyukovskiy
  */
 public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, Ordered, ApplicationContextAware {
-    private final static boolean HIKARI_AVAILABLE = ClassUtils.isPresent("com.zaxxer.hikari.HikariDataSource", DataSourceNameResolver.class.getClassLoader());
-
+    private final Collection<String> excludedBeans;
     private ApplicationContext applicationContext;
     private DataSourceNameResolver dataSourceNameResolver;
-    private Collection<String> excludedBeans;
 
     public DataSourceDecoratorBeanPostProcessor(Collection<String> excludedBeans) {
         this.excludedBeans = excludedBeans;
@@ -65,42 +60,32 @@ public class DataSourceDecoratorBeanPostProcessor implements BeanPostProcessor, 
                     .sorted(Entry.comparingByValue(AnnotationAwareOrderComparator.INSTANCE))
                     .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (v1, v2) -> v2, LinkedHashMap::new));
 
-            return decorate((DataSource) bean, getDataSourceName(bean, beanName), decorators);
+            return decorate((DataSource) bean, beanName, decorators);
         }
         else {
             return bean;
         }
     }
 
-    private String getDataSourceName(Object bean, String beanName) {
-        if (HIKARI_AVAILABLE && bean instanceof HikariDataSource) {
-            HikariDataSource hikariDataSource = (HikariDataSource) bean;
-            if (hikariDataSource.getPoolName() != null && !hikariDataSource.getPoolName().startsWith("HikariPool-")) {
-                return hikariDataSource.getPoolName();
-            }
-        }
-
-        return beanName;
-    }
-
-    private DataSource decorate(DataSource dataSource, String name, Map<String, DataSourceDecorator> decorators) {
-        getDataSourceNameResolver().addDataSource(name, dataSource);
+    private DataSource decorate(DataSource dataSource, String beanName, Map<String, DataSourceDecorator> decorators) {
+        getDataSourceNameResolver().add(dataSource, beanName);
+        String dataSourceName = getDataSourceNameResolver().getName(dataSource);
         DataSource decoratedDataSource = dataSource;
         for (Entry<String, DataSourceDecorator> decoratorEntry : decorators.entrySet()) {
             String decoratorBeanName = decoratorEntry.getKey();
             DataSourceDecorator decorator = decoratorEntry.getValue();
 
             DataSource dataSourceBeforeDecorating = decoratedDataSource;
-            decoratedDataSource = Objects.requireNonNull(decorator.decorate(name, decoratedDataSource), "DataSourceDecorator (" + decoratorBeanName + ", " + decorator + ") should not return null");
+            decoratedDataSource = Objects.requireNonNull(decorator.decorate(dataSourceName, decoratedDataSource), "DataSourceDecorator (" + decoratorBeanName + ", " + decorator + ") should not return null");
 
             if (dataSourceBeforeDecorating != decoratedDataSource) {
-                getDataSourceNameResolver().addDataSource(name, decoratedDataSource);
+                getDataSourceNameResolver().add(decoratedDataSource, dataSourceName);
             }
         }
 
         if (dataSource != decoratedDataSource) {
             decoratedDataSource = new DecoratedDataSource(dataSource, decoratedDataSource);
-            getDataSourceNameResolver().addDataSource(name, decoratedDataSource);
+            getDataSourceNameResolver().add(decoratedDataSource, dataSourceName);
         }
 
         return decoratedDataSource;

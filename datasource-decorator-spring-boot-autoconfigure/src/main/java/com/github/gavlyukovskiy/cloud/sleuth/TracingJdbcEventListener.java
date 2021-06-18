@@ -52,7 +52,7 @@ public class TracingJdbcEventListener extends SimpleJdbcEventListener implements
 
     @Override
     public void onBeforeGetConnection(ConnectionInformation connectionInformation) {
-        String dataSourceName = dataSourceNameResolver.resolveDataSourceName(connectionInformation.getDataSource());
+        String dataSourceName = dataSourceNameResolver.getName(connectionInformation.getDataSource());
         strategy.beforeGetConnection(connectionInformation, dataSourceName);
     }
 
@@ -63,7 +63,7 @@ public class TracingJdbcEventListener extends SimpleJdbcEventListener implements
 
     @Override
     public void onBeforeAnyExecute(StatementInformation statementInformation) {
-        String dataSourceName = dataSourceNameResolver.resolveDataSourceName(statementInformation.getConnectionInformation().getDataSource());
+        String dataSourceName = dataSourceNameResolver.getName(statementInformation.getConnectionInformation().getDataSource());
         strategy.beforeQuery(statementInformation.getConnectionInformation(), statementInformation, dataSourceName);
     }
 
@@ -74,7 +74,7 @@ public class TracingJdbcEventListener extends SimpleJdbcEventListener implements
 
     @Override
     public void onBeforeResultSetNext(ResultSetInformation resultSetInformation) {
-        String dataSourceName = dataSourceNameResolver.resolveDataSourceName(resultSetInformation.getConnectionInformation().getDataSource());
+        String dataSourceName = dataSourceNameResolver.getName(resultSetInformation.getConnectionInformation().getDataSource());
         strategy.beforeResultSetNext(resultSetInformation.getConnectionInformation(), resultSetInformation.getStatementInformation(), resultSetInformation, dataSourceName);
     }
 

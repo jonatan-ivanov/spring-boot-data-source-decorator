@@ -58,6 +58,6 @@ public class DataSourceDecoratorAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public DataSourceNameResolver dataSourceNameResolver() {
-        return new DataSourceNameResolver();
+        return new PoolAwareDataSourceNameResolver();
     }
 }
